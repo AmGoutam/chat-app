@@ -5,7 +5,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [tailwindcss()],
   build: {
-    // Standard minification without extra dependencies
     minify: true, 
     sourcemap: false, 
   },
