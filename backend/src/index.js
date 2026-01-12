@@ -17,10 +17,32 @@ dotenv.config();
 const PORT = process.env.PORT || 8000;
 const isProd = process.env.NODE_ENV === "production";
 const __dirname = path.resolve();
-app.set("trust proxy", 1);
 
-// --- 1. RATE LIMITING ---
-// Optimization: Limits each IP to preserve server resources.
+// --- 1. PROXY TRUST (MUST BE BEFORE LIMITER) ---
+// Essential for Render/proxies so rate limiting correctly identifies users.
+app.set("trust proxy", 1); 
+
+// --- 2. PERFORMANCE & SECURITY MIDDLEWARE ---
+app.use(compression()); // Shrinks JSON payloads for faster delivery.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "img-src": ["'self'", "data:", "https://res.cloudinary.com"],
+        "connect-src": [
+          "'self'",
+          "https://chat-app-yfj9.onrender.com",
+          "wss://chat-app-yfj9.onrender.com",
+        ],
+      },
+    },
+  })
+);
+
+// --- 3. RATE LIMITING ---
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -30,65 +52,35 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- 2. PERFORMANCE & SECURITY ---
-app.use(compression()); // Shrinks JSON payloads
-
-// Combined Helmet Security with specialized CSP for MERN/Socket.io
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        "default-src": ["'self'"],
-        "script-src": ["'self'", "'unsafe-inline'"],
-        "style-src": [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-        ],
-        "img-src": ["'self'", "data:", "https://res.cloudinary.com"], // Allow Cloudinary images
-        "connect-src": [
-          "'self'",
-          "https://chat-app-yfj9.onrender.com",
-          "wss://chat-app-yfj9.onrender.com",
-        ], // Allow Socket connections
-      },
-    },
-  })
-);
-
-// --- 3. REQUEST PARSING ---
+// --- 4. REQUEST PARSING ---
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ limit: "2mb", extended: true }));
 app.use(cookieParser());
 
-// --- 4. PRODUCTION CORS ---
+// --- 5. CORS CONFIGURATION ---
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// --- 5. ROUTES ---
+// --- 6. API ROUTES ---
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// --- 6. STATIC FILE SERVING (Critical for Render) ---
-// This section ensures your backend serves the frontend build files.
+// --- 7. STATIC FILE SERVING & CATCH-ALL ---
 if (isProd) {
-  // Use absolute path to avoid 404 errors during deployment
   const distPath = path.join(__dirname, "frontend", "dist");
   app.use(express.static(distPath));
 
-  // Any non-API route serves the React app's index.html
-  app.get("*", (req, res) => {
+  // Express v5 requires a named parameter for wildcards.
+  app.get("/*splat", (req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
 
-// --- 7. GLOBAL ERROR HANDLER ---
+// --- 8. ERROR HANDLING (LAST) ---
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
   res.status(status).json({
@@ -98,7 +90,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --- 8. INITIALIZATION ---
+// --- 9. START SERVER ---
 server.listen(PORT, async () => {
   try {
     await connectDb();
