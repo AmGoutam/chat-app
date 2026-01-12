@@ -17,6 +17,7 @@ dotenv.config();
 const PORT = process.env.PORT || 8000;
 const isProd = process.env.NODE_ENV === "production";
 const __dirname = path.resolve();
+app.set("trust proxy", 1);
 
 // --- 1. RATE LIMITING ---
 // Optimization: Limits each IP to preserve server resources.
@@ -39,12 +40,16 @@ app.use(
       directives: {
         "default-src": ["'self'"],
         "script-src": ["'self'", "'unsafe-inline'"],
-        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "style-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+        ],
         "img-src": ["'self'", "data:", "https://res.cloudinary.com"], // Allow Cloudinary images
         "connect-src": [
           "'self'",
-          "https://chat-app-yfj9.onrender.com", 
-          "wss://chat-app-yfj9.onrender.com"
+          "https://chat-app-yfj9.onrender.com",
+          "wss://chat-app-yfj9.onrender.com",
         ], // Allow Socket connections
       },
     },
