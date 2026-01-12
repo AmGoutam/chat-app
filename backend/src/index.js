@@ -2,9 +2,10 @@ import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import compression from "compression"; 
+import compression from "compression";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit"; // New: Prevents server overload
+import rateLimit from "express-rate-limit";
+import path from "path";
 
 import connectDb from "./db/db.js";
 import { app, server } from "./lib/socket.js";
@@ -15,27 +16,43 @@ dotenv.config();
 
 const PORT = process.env.PORT || 8000;
 const isProd = process.env.NODE_ENV === "production";
+const __dirname = path.resolve();
 
 // --- 1. RATE LIMITING ---
-// Optimization: Limits each IP to 100 requests per 15 mins to preserve server resources.
+// Optimization: Limits each IP to preserve server resources.
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100, 
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: "Too many requests from this IP, please try again after 15 minutes",
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// Apply rate limiting to all requests
 app.use(limiter);
 
 // --- 2. PERFORMANCE & SECURITY ---
 app.use(compression()); // Shrinks JSON payloads
-app.use(helmet());      // Hardens server security
+
+// Combined Helmet Security with specialized CSP for MERN/Socket.io
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "img-src": ["'self'", "data:", "https://res.cloudinary.com"], // Allow Cloudinary images
+        "connect-src": [
+          "'self'",
+          "https://chat-app-yfj9.onrender.com", 
+          "wss://chat-app-yfj9.onrender.com"
+        ], // Allow Socket connections
+      },
+    },
+  })
+);
 
 // --- 3. REQUEST PARSING ---
-// Strict limits to prevent memory spikes
-app.use(express.json({ limit: "2mb" })); 
+app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ limit: "2mb", extended: true }));
 app.use(cookieParser());
 
@@ -53,18 +70,30 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// --- 6. GLOBAL ERROR HANDLER ---
+// --- 6. STATIC FILE SERVING (Critical for Render) ---
+// This section ensures your backend serves the frontend build files.
+if (isProd) {
+  // Use absolute path to avoid 404 errors during deployment
+  const distPath = path.join(__dirname, "frontend", "dist");
+  app.use(express.static(distPath));
+
+  // Any non-API route serves the React app's index.html
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(distPath, "index.html"));
+  });
+}
+
+// --- 7. GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
   res.status(status).json({
     success: false,
     message: err.message || "Internal Server Error",
-    stack: !isProd ? err.stack : undefined, // Hide stack in production
+    stack: !isProd ? err.stack : undefined,
   });
 });
 
-// --- 7. INITIALIZATION ---
-// Connect to DB before server start to avoid initial request failures.
+// --- 8. INITIALIZATION ---
 server.listen(PORT, async () => {
   try {
     await connectDb();
