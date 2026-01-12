@@ -1,0 +1,138 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: all;
+}
+/* Add this CSS to your global styles or component styles */
+
+/* Remove ALL DaisyUI default hover effects */
+.action-btn::before,
+.action-btn::after,
+button::before,
+button::after,
+.btn::before,
+.btn::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Remove DaisyUI ripple and focus effects */
+.action-btn,
+button,
+.btn {
+  position: relative;
+  overflow: visible !important;
+}
+
+.action-btn:focus,
+button:focus,
+.btn:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.action-btn:focus-visible,
+button:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid oklch(var(--p) / 0.4) !important;
+  outline-offset: 2px !important;
+}
+
+/* Remove default hover background */
+.action-btn:hover::before,
+button:hover::before,
+.btn:hover::before {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Specifically target the gray circle effect */
+*[class*="btn"]:not(.no-animation)::before,
+*[class*="btn"]:not(.no-animation)::after {
+  display: none !important;
+}
+
+/* Remove all pseudo-element animations */
+*::before,
+*::after {
+  animation: none !important;
+}
+
+/* Override DaisyUI button focus ring */
+.btn:focus-visible {
+  outline-style: solid !important;
+  outline-width: 2px !important;
+}
+
+/* Remove default transform on active state */
+.action-btn:active,
+button:active,
+.btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Ensure custom hover effects work */
+.action-btn {
+  transition: all 0.2s ease !important;
+}
+
+.action-btn:hover {
+  transform: scale(1.1) !important;
+}
+
+/* Fix for chat bubble buttons */
+.chat-bubble .action-btn::before,
+.chat-bubble .action-btn::after,
+.chat-bubble button::before,
+.chat-bubble button::after {
+  display: none !important;
+}
+
+/* Remove default DaisyUI animations */
+@keyframes button-pop {
+  0% { transform: scale(0.95); }
+  40% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Override any remaining button effects */
+[class*="btn-"]:not(.btn-disabled):active {
+  transform: scale(0.95) !important;
+}
+
+/* Ensure no gray overlay appears */
+.action-btn:hover,
+button:hover,
+.btn:hover {
+  background-color: inherit !important;
+}
+
+/* Specific fixes for your action buttons */
+.action-btn.w-9,
+.action-btn.w-10,
+.action-btn.w-12,
+.action-btn.w-14 {
+  overflow: hidden !important;
+}
+
+.action-btn.w-9::before,
+.action-btn.w-10::before,
+.action-btn.w-12::before,
+.action-btn.w-14::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Remove ripple effect on click */
+.action-btn:active::after,
+button:active::after,
+.btn:active::after {
+  display: none !important;
+}
+
+/* Ensure modal buttons don't have the effect either */
+.modal .action-btn::before,
+.modal .action-btn::after,
+.modal button::before,
+.modal button::after {
+  display: none !important;
+}
